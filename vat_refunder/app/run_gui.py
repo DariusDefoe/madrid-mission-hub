@@ -7,13 +7,13 @@ def run(script):
 root = tk.Tk()
 root.title("VAT Refunder")
 buttons = [
-    ("Enter Chancery Invoice",  "invoice_chy.py"),
-    ("Enter Residence Invoice", "invoice_res.py"),
-    ("Enter Personal Invoice",  "invoice_pers.py"),
-    ("Enter Voucher",           "vouchers.py"),
-    ("Enter New Supplier", "new_supplier.py"),
-    ("Print Official VAT Submission", "vat_official.py"),
-    ("Print Personal VAT Submission", "vat_colleague.py"),
+    ("Log Chancery Invoice",  "invoice_chy.py"),
+    ("Log Personal Invoice",  "invoice_pers.py"),
+    ("Log Residence Invoice", "invoice_res.py"),
+    ("Log New Supplier", "new_supplier.py"),
+    ("Log Voucher",           "vouchers.py"),
+    ("Print Official VAT", "vat_oficial.py"),
+    ("Print Personal VAT ", "vat_colleague.py"),
     ("Print Invoice-to-Voucher Report", "vat_vouchers.py"),
 ]
 for text, script in buttons:

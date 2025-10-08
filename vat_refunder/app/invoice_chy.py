@@ -62,7 +62,7 @@ def calculate_vat_from_total(total_amount):
 
 def fetch_supplier_data():
     try:
-        with db_cursor() as cur: 
+        with db_cursor(commit=False) as cur: 
             cur.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
             suppliers = cur.fetchall()
             return suppliers
@@ -72,7 +72,7 @@ def fetch_supplier_data():
 
 def fetch_budget_heads():
     try:
-        with db_cursor() as cur:
+        with db_cursor(commit=False) as cur:
             cur.execute("SELECT Head_of_Accounts_ID, Head_of_Accounts_Name FROM Head_of_Accounts")
             rows = cur.fetchall()
             return {name: head_id for head_id, name in rows}

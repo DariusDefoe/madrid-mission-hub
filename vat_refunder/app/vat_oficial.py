@@ -14,7 +14,6 @@ Output dir:
 
 import os
 from datetime import datetime
-from urllib.parse import urlparse
 from contextlib import contextmanager
 from mysql.connector import Error
 from db import get_cnx  # central DB connector

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os, csv
-from urllib.parse import urlparse
 from pathlib import Path
 from datetime import datetime
 from contextlib import contextmanager
