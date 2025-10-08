@@ -40,5 +40,18 @@ mkdir -p ~/Desktop/exports
 echo "🐬 Starting MySQL container (first run may take a minute)..."
 docker compose up -d
 
+# --- 6️⃣ Install desktop shortcut ---
+DESKTOP_FILE="vat_refunder.desktop"
+TARGET_DIR="$HOME/.local/share/applications"
+
+if [ -f "$DESKTOP_FILE" ]; then
+  mkdir -p "$TARGET_DIR"
+  cp "$DESKTOP_FILE" "$TARGET_DIR/"
+  chmod +x "$TARGET_DIR/$DESKTOP_FILE"
+  echo "🖥️  Desktop launcher installed to $TARGET_DIR/$DESKTOP_FILE"
+else
+  echo "⚠️  $DESKTOP_FILE not found — skipping launcher copy."
+fi
+
 echo "🎉 Setup complete!"
-echo "Next time, just run ./start.sh to launch the app."
+echo "Next time, just run ./start.sh or open VAT Refunder from your app menu."
