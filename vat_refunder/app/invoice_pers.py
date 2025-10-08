@@ -1,34 +1,32 @@
 #!/usr/bin/env python3
 import os
-from dotenv import load_dotenv
-from urllib.parse import urlparse
-
+from contextlib import contextmanager
+from db import get_cnx  # central DB connector
 import tkinter as tk
 from tkinter import ttk, messagebox
-import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
 
-# ===================== Parse MySQL Connection Details =====================
-mysql_conn = os.environ.get("MYSQL_CONNECTION")
-if mysql_conn:
-    url = urlparse(mysql_conn)
-    db_config = {
-        "host": url.hostname,
-        "user": url.username,
-        "password": url.password,
-        "database": url.path.lstrip('/'),
-        "port": url.port if url.port else 3306
-    }
-else:
-    db_config = {
-        "host": os.environ.get("DB_HOST"),
-        "user": os.environ.get("DB_USER"),
-        "password": os.environ.get("DB_PASSWORD"),
-        "database": os.environ.get("DB_NAME")
-    }
-
-# ===================== Autocomplete Combobox Class =====================
+# ==========================================================
+# Context manager for automatic cleanup
+# ==========================================================
+@contextmanager
+def db_cursor(commit=False):
+    cnx = get_cnx()
+    cur = cnx.cursor()
+    try:
+        yield cur
+        if commit:
+            cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        raise e
+    finally:
+        cur.close()
+        cnx.close()
+# ==========================================================
+# Autocomplete Combobox Class
+# ==========================================================
 class AutocompleteCombobox(ttk.Combobox):
     """
     A Combobox with autocompletion.
@@ -53,30 +51,28 @@ class AutocompleteCombobox(ttk.Combobox):
     def _handle_selected(self, event):
         pass
 
-# ===================== Database Fetch Function =====================
+# ==========================================================
+# Database Fetch Function
+# ==========================================================
 def fetch_data_from_db():
     try:
-        connection = mysql.connector.connect(**db_config)
-        cursor = connection.cursor()
-        # Fetch colleagues: only rank_id between 1 and 5 and ordered by rank_id
-        cursor.execute("SELECT Colleague_ID, Colleague_Name FROM Colleagues WHERE rank_id BETWEEN 1 AND 5 ORDER BY rank_id")
-        colleagues = cursor.fetchall()
-        cursor.execute("SELECT recipient_id, Name FROM Recipients")
-        recipients = cursor.fetchall()
-        cursor.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
-        suppliers = cursor.fetchall()
-        cursor.execute("SELECT Refund_Status_ID, Refund_Status_Type FROM Refund_Status")
-        refund_statuses = cursor.fetchall()
-        return colleagues, recipients, suppliers, refund_statuses
+        with db_cursor(commit=False) as cur:
+            # Fetch colleagues: only rank_id between 1 and 5 and ordered by rank_id
+            cur.execute("SELECT Colleague_ID, Colleague_Name FROM Colleagues WHERE rank_id BETWEEN 1 AND 5 ORDER BY rank_id")
+            colleagues = cur.fetchall()
+            cur.execute("SELECT recipient_id, Name FROM Recipients")
+            recipients = cur.fetchall()
+            cur.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
+            suppliers = cur.fetchall()
+            cur.execute("SELECT Refund_Status_ID, Refund_Status_Type FROM Refund_Status")
+            refund_statuses = cur.fetchall()
+            return colleagues, recipients, suppliers, refund_statuses
     except Error as e:
         messagebox.showerror("Database Error", f"Error fetching data: {e}")
         return [], [], [], []
-    finally:
-        if 'connection' in locals() and connection.is_connected():
-            cursor.close()
-            connection.close()
-
-# ===================== Event Handlers =====================
+# ==========================================================
+# Event Handlers
+# ==========================================================
 def submit_transaction():
     store_name = store_var.get()
     colleague_name = colleague_var.get()
@@ -113,43 +109,36 @@ def submit_transaction():
     refund_status_id = refund_status_id_map.get(refund_status_name)
 
     try:
-        connection = mysql.connector.connect(**db_config)
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM Invoices_Personal WHERE Number = %s", (invoice_number,))
-        invoice = cursor.fetchone()
-        if invoice:
-            messagebox.showerror("Duplicate Invoice", "An invoice with this number already exists.")
-            return
+        with db_cursor(commit=True) as cur:
+            cur.execute("SELECT * FROM Invoices_Personal WHERE Number = %s", (invoice_number,))
+            invoice = cur.fetchone()
+            if invoice:
+                messagebox.showerror("Duplicate Invoice", "An invoice with this number already exists.")
+                return
 
-        query = """
-        INSERT INTO Invoices_Personal (Store, Colleague_ID, Recipient_ID, Number, Date, Amount, VAT, Status, Date_Refunded)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        cursor.execute(query, (
-            store_id,
-            Colleague_ID,
-            recipient_id,
-            invoice_number,
-            invoice_date,
-            invoice_amount,
-            invoice_vat,
-            refund_status_id,
-            date_refunded if date_refunded else None
-        ))
-        connection.commit()
-        print("Store ID:", store_id)
-        print("Colleague ID:", Colleague_ID)
-        print("Recipient ID:", recipient_id)
-        print("Refund Status ID:", refund_status_id)
-        messagebox.showinfo("Success", "Invoice submitted successfully.")
-        clear_form()
+            query = """
+            INSERT INTO Invoices_Personal (Store, Colleague_ID, Recipient_ID, Number, Date, Amount, VAT, Status, Date_Refunded)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cur.execute(query, (
+                store_id,
+                Colleague_ID,
+                recipient_id,
+                invoice_number,
+                invoice_date,
+                invoice_amount,
+                invoice_vat,
+                refund_status_id,
+                date_refunded if date_refunded else None
+            ))
+            print("Store ID:", store_id)
+            print("Colleague ID:", Colleague_ID)
+            print("Recipient ID:", recipient_id)
+            print("Refund Status ID:", refund_status_id)
+            messagebox.showinfo("Success", "Invoice submitted successfully.")
+            clear_form()
     except Error as e:
         messagebox.showerror("Database Error", f"Error submitting invoice: {e}")
-    finally:
-        if connection.is_connected():
-            cursor.close()
-            connection.close()
-
 def clear_form():
     store_var.set('')
     colleague_var.set('')
@@ -193,7 +182,9 @@ def on_invoice_amount_change(*args):
         except ValueError:
             invoice_vat_var.set("")
 
-# ===================== Fetch Data =====================
+# ==========================================================
+# Fetch Data
+# ==========================================================
 colleagues, recipients, suppliers, refund_statuses = fetch_data_from_db()
 
 Colleague_ID_map = {colleague[1]: colleague[0] for colleague in colleagues}
@@ -201,7 +192,9 @@ recipient_id_map = {recipient[1]: recipient[0] for recipient in recipients}
 supplier_id_map = {supplier[1]: supplier[0] for supplier in suppliers}
 refund_status_id_map = {status[1]: status[0] for status in refund_statuses}
 
-# ===================== Tkinter GUI Setup =====================
+# ==========================================================
+# Tkinter GUI Setup
+# ==========================================================
 root = tk.Tk()
 root.title("Personal Invoice Entry Form")
 root.geometry("700x600")
