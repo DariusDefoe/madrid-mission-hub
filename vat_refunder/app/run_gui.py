@@ -11,6 +11,7 @@ buttons = [
     ("Enter Residence Invoice", "invoice_res.py"),
     ("Enter Personal Invoice",  "invoice_pers.py"),
     ("Enter Voucher",           "vouchers_entry.py"),
+    ("Enter New Supplier", "new_supplier.py"),
     ("Print AEAT-ready submission", "vat_submission.py"),
     ("Print Invoice-to-Voucher Report", "vat_vouchers.py"),
 ]

@@ -47,10 +47,9 @@ from reportlab.pdfgen import canvas
 # ==========================================================
 # Config
 # ==========================================================
-OUTPUT_DIR = "/home/user/Reports/Vat_Oficial_Madrid"
+OUTPUT_DIR = "/home/user/Desktop/exports"
 MAX_INVOICE_NUMBER_LEN = 20  # AEAT constraint
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-
 
 # ==========================================================
 # Custom Canvas Class

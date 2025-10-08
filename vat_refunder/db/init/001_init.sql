@@ -105,3 +105,9 @@ CREATE TABLE IF NOT EXISTS Invoices_Residence (
     REFERENCES Vouchers (Voucher_ID)
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+## TODO (darius): Add Invoices_Chancery_Vat view 
+## TODO (darius): Add Invoices_Residence_Vat view 
+## TODO (darius): Add Invoices_Personal view 
+## TODO (darius): Add recipients table
+
