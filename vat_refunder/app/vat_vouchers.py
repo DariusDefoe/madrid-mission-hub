@@ -3,7 +3,9 @@ import os, csv
 from urllib.parse import urlparse
 from pathlib import Path
 from datetime import datetime
-import mysql.connector
+from contextlib import contextmanager
+from mysql.connector import Error
+from db import get_cnx  # central DB connector
 from tkinter import Tk, Label, Button, OptionMenu, StringVar, Radiobutton, IntVar, messagebox
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib import colors
@@ -13,7 +15,28 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT
 from reportlab.pdfgen import canvas
 
-# ---------- Canvas with page numbers ----------
+# ==========================================================
+# Context manager for automatic cleanup
+# ==========================================================
+@contextmanager
+def db_cursor(commit=False):
+    cnx = get_cnx()
+    cur = cnx.cursor()
+    try:
+        yield cur
+        if commit:
+            cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        raise e
+    finally:
+        cur.close()
+        cnx.close()
+
+# ==========================================================
+# Canvas with Page Numbers
+# ==========================================================
+
 class NumberedCanvas(canvas.Canvas):
     def __init__(self,*a,**k):
         super().__init__(*a,**k); self._saved=[]
@@ -30,16 +53,16 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica",6); self.drawString(15*mm,h-10*mm,f"Generated on: {ts}")
         self.setFont("Helvetica",8); self.drawCentredString(w/2,15*mm,f"{self._pageNumber}/{n}")
 
-# ---------- DB config ----------
-MYSQL_CONNECTION=os.getenv("MYSQL_CONNECTION")
-if not MYSQL_CONNECTION: raise ValueError("MYSQL_CONNECTION env var not set")
-p=urlparse(MYSQL_CONNECTION)
-DB=dict(host=p.hostname,user=p.username,password=p.password,database=p.path.lstrip('/'),port=p.port or 3306)
+# ==========================================================
+# Output Directory setup
+# ==========================================================
 
 OUT_DIR = Path.home()/ "Desktop" / "exports"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ---------- Data ----------
+# ==========================================================
+# Queries
+# ==========================================================
 BASE_QUERY = """
 SELECT
   n.Supplier_Name          AS Proveedor,
@@ -58,15 +81,17 @@ ORDER BY i.Date, i.Number
 """
 
 def fetch(table, q, y):
-    cn=None
     try:
-        cn=mysql.connector.connect(**DB); cur=cn.cursor()
-        cur.execute(BASE_QUERY.format(table=table),(q,y))
-        rows=cur.fetchall(); cur.close(); return rows
-    finally:
-        if cn: cn.close()
+        with db_cursor(commit=False) as cur:
+            cur.execute(BASE_QUERY.format(table=table),(q,y))
+            rows=cur.fetchall(); cur.close(); return rows
+    except Error as e:
+        messagebox.showerror("Error", f"Error: {e}")
+  
+# ==========================================================
+# PDF helpers
+# ==========================================================
 
-# ---------- PDF helpers ----------
 styles=getSampleStyleSheet()
 total_style=ParagraphStyle(name='Total', parent=styles['Normal'], fontSize=9, alignment=TA_RIGHT, spaceAfter=8)
 
@@ -131,7 +156,9 @@ def build_pdf(ch_data, rs_data, out_file, year, quarter):
     doc.build(elems, canvasmaker=NumberedCanvas)
     messagebox.showinfo("Success", f"PDF generated:\n{out_file}")
 
-# ---------- CSV ----------
+# ==========================================================
+# CSV
+# ==========================================================
 def write_csv(rows, path):
     headers=["Proveedor","Numero_Factura","Fecha_Devengo",
              "Importe_Total_Impuestos_Incluidos","Cuotas_IVA","Voucher_Number","Head_of_Accounts"]
@@ -140,7 +167,9 @@ def write_csv(rows, path):
         for r in rows:
             rr=list(r); rr[5] = "" if rr[5] is None else rr[5]; w.writerow(rr)
 
-# ---------- GUI ----------
+# ==========================================================
+# GUI
+# ==========================================================
 def main():
     root=Tk(); root.title("Generate VAT Report (Chancery + Residence)")
     quarter=StringVar(); year=StringVar(); out=IntVar(value=1)

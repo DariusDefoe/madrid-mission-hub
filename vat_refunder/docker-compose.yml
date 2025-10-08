@@ -9,7 +9,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ChangeMeUser!
       MYSQL_DATABASE: vat_refunder
       MYSQL_USER: vat_user
       MYSQL_PASSWORD: ChangeMeUser!

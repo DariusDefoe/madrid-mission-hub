@@ -3,20 +3,21 @@
 VAT Report Generator
 - Output exclusive: PDF OR CSV (radio toggle).
 - Always generates Chancery first, then Residence (single output).
-- CSV: each line ends with a semicolon. If Numero_Factura > 20 chars, it’s truncated
+- CSV: each line ends with a semicolon. If Numero_Factura > 20 chars, it truncated
   from the end (keep first 20). A truncation log CSV is produced alongside the output.
 
 Env:
   MYSQL_CONNECTION=mysql://user:pass@host:port/dbname
 Output dir:
-  /home/user/Reports/Vat_Oficial_Madrid
+  ~/Desktop/exports
 """
 
 import os
 from datetime import datetime
 from urllib.parse import urlparse
-
-import mysql.connector
+from contextlib import contextmanager
+from mysql.connector import Error
+from db import get_cnx  # central DB connector
 from tkinter import (
     Tk,
     Label,
@@ -45,9 +46,27 @@ from reportlab.lib.enums import TA_RIGHT
 from reportlab.pdfgen import canvas
 
 # ==========================================================
+# Context manager for automatic cleanup
+# ==========================================================
+@contextmanager
+def db_cursor(commit=False):
+    cnx = get_cnx()
+    cur = cnx.cursor(dictionary=True)
+    try:
+        yield cur
+        if commit:
+            cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        raise e
+    finally:
+        cur.close()
+        cnx.close()
+
+# ==========================================================
 # Config
 # ==========================================================
-OUTPUT_DIR = "/home/user/Desktop/exports"
+OUTPUT_DIR = "~/Desktop/exports"
 MAX_INVOICE_NUMBER_LEN = 20  # AEAT constraint
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -77,21 +96,6 @@ class NumberedCanvas(canvas.Canvas):
         self.drawString(15 * mm, A4[1] - 10 * mm, f"Generated on: {timestamp}")
         self.setFont("Helvetica", 8)
         self.drawCentredString(A4[0] / 2.0, 15 * mm, f"{self._pageNumber}/{page_count}")
-
-
-# ==========================================================
-# DB Connection
-# ==========================================================
-MYSQL_CONNECTION = os.getenv("MYSQL_CONNECTION")
-if not MYSQL_CONNECTION:
-    raise ValueError("MYSQL_CONNECTION environment variable is not set.")
-
-parsed = urlparse(MYSQL_CONNECTION)
-MYSQL_HOST = parsed.hostname
-MYSQL_USER = parsed.username
-MYSQL_PASSWORD = parsed.password
-MYSQL_DATABASE = parsed.path.lstrip("/")
-MYSQL_PORT = parsed.port or 3306
 
 # ==========================================================
 # Data Fetching
@@ -127,47 +131,33 @@ SELECT_FALLBACK = ", ".join(
     ]
 )
 
-
 def fetch_data(view_name, quarter, fiscal_year):
-    connection, cursor = None, None
     try:
-        connection = mysql.connector.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            database=MYSQL_DATABASE,
-            port=MYSQL_PORT,
-        )
-        cursor = connection.cursor(dictionary=True)
-        try:
-            query = f"""
-            SELECT {SELECT_WITH_PROVEEDOR}
-            FROM {view_name}
-            WHERE Trimestre = %s AND Fiscal_Year = %s
-            ORDER BY NIF, Fecha_Devengo, Numero_Factura
-            """
-            cursor.execute(query, (quarter, fiscal_year))
-        except mysql.connector.Error:
-            query = f"""
-            SELECT {SELECT_FALLBACK}
-            FROM {view_name}
-            WHERE Trimestre = %s AND Fiscal_Year = %s
-            ORDER BY NIF, Fecha_Devengo, Numero_Factura
-            """
-            cursor.execute(query, (quarter, fiscal_year))
-        rows = cursor.fetchall() or []
-        norm = []
-        for r in rows:
-            norm.append({k: r.get(k, "") for k in COLUMNS})
-        return norm
-    except mysql.connector.Error as err:
+        with db_cursor(commit=False) as cur:
+            try:
+                query = f"""
+                SELECT {SELECT_WITH_PROVEEDOR}
+                FROM {view_name}
+                WHERE Trimestre = %s AND Fiscal_Year = %s
+                ORDER BY NIF, Fecha_Devengo, Numero_Factura
+                """
+                cur.execute(query, (quarter, fiscal_year))
+            except Error:
+                query = f"""
+                SELECT {SELECT_FALLBACK}
+                FROM {view_name}
+                WHERE Trimestre = %s AND Fiscal_Year = %s
+                ORDER BY NIF, Fecha_Devengo, Numero_Factura
+                """
+                cur.execute(query, (quarter, fiscal_year))
+
+            rows = cur.fetchall() or []
+            norm = [{k: r.get(k, "") for k in COLUMNS} for r in rows]
+            return norm
+
+    except Error as err:
         messagebox.showerror("Database Error", f"Error: {err}")
         return []
-    finally:
-        if cursor:
-            cursor.close()
-        if connection and connection.is_connected():
-            connection.close()
 
 
 # ==========================================================

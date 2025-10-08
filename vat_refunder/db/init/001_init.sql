@@ -110,4 +110,5 @@ CREATE TABLE IF NOT EXISTS Invoices_Residence (
 ## TODO (darius): Add Invoices_Residence_Vat view 
 ## TODO (darius): Add Invoices_Personal view 
 ## TODO (darius): Add recipients table
-
+## TODO (darius): Add Refund_Status table
+## TODO (darius): Copy GetRelFactColleague procedure

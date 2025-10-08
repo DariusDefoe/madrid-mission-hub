@@ -2,8 +2,9 @@
 
 import os
 import csv
-import mysql.connector
-from mysql.connector import errorcode
+from contextlib import contextmanager
+from mysql.connector import Error
+from db import get_cnx  # central DB connector
 from tkinter import Tk, Label, Button, Entry, StringVar, LEFT, RIGHT, E, W, N, S, END
 from tkinter import messagebox, filedialog
 import time
@@ -12,54 +13,48 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from dotenv import load_dotenv
-from urllib.parse import urlparse
 from datetime import datetime
 
-# Load environment variables from .env file
-load_dotenv()
+# ==========================================================
+# Context manager for automatic cleanup
+# ==========================================================
+@contextmanager
+def db_cursor(commit=False):
+    cnx = get_cnx()
+    cur = cnx.cursor()
+    try:
+        yield cur
+        if commit:
+            cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        raise e
+    finally:
+        cur.close()
+        cnx.close()
 
-# Retrieve MySQL connection string and default output directory
-MYSQL_CONNECTION = os.getenv('MYSQL_CONNECTION')
-DEFAULT_OUTPUT_DIR = "/home/user/Documentos/vat_personal"
+# ==========================================================
+# Define output directory
+# ==========================================================
+DEFAULT_OUTPUT_DIR = "~Desktop/exports"
 
 # Global variable for output directory (user can browse)
 OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 
-# Parse the MySQL connection string
-def parse_mysql_connection(connection_str):
-    parsed = urlparse(connection_str)
-    if parsed.scheme != 'mysql':
-        raise ValueError("Invalid MySQL connection string scheme. Expected 'mysql'.")
-    return {
-        'host': parsed.hostname or '127.0.0.1',
-        'user': parsed.username or 'root',
-        'password': parsed.password or '',
-        'database': parsed.path.lstrip('/') if parsed.path else 'administration',
-        'port': parsed.port or 3306
-    }
-
-try:
-    connection_params = parse_mysql_connection(MYSQL_CONNECTION)
-except Exception as e:
-    messagebox.showerror("Configuration Error", f"Error parsing MYSQL_CONNECTION: {e}")
-    exit(1)
+# ==========================================================
+# Define functions
+# ==========================================================
 
 def fetch_data(Colleague_ID, quarter, fiscal_year):
     try:
-        connection = mysql.connector.connect(**connection_params)
-        cursor = connection.cursor()
-        cursor.callproc('GetRelFactColleague', [Colleague_ID, quarter, fiscal_year])
-        data = []
-        for result in cursor.stored_results():
-            data = result.fetchall()
-        return data
-    except mysql.connector.Error as err:
-        messagebox.showerror("Database Error", f"Error: {err}")
-        return []
-    finally:
-        if connection.is_connected():
-            connection.close()
+        with db_cursor(commit=False) as cur:
+            cur.callproc('GetRelFactColleague', [Colleague_ID, quarter, fiscal_year])
+            data = []
+            for result in cur.stored_results():
+                data = result.fetchall()
+            return data
+    except Error as e:
+        messagebox.showerror("Error", f"Error: {e}")
 
 def generate_csv(data, output_file):
     """
