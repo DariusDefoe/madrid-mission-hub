@@ -10,10 +10,7 @@ executing==2.2.0
 idna==3.10
 ipykernel==6.30.1
 ipython==9.5.0
-ipython_pygments_lexers==1.1.1
 jedi==0.19.2
-jupyter_client==8.6.3
-jupyter_core==5.8.1
 matplotlib-inline==0.1.7
 mysql-connector==2.2.9
 nest-asyncio==1.6.0
@@ -36,6 +33,7 @@ regex==2025.9.18
 requests==2.32.5
 six==1.17.0
 stack-data==0.6.3
+tkcalendar==1.6.1
 tornado==6.5.2
 traitlets==5.14.3
 tzdata==2025.2

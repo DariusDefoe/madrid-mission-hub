@@ -22,7 +22,7 @@ fi
 # --- 3️⃣ Build Python environment ---
 if ! command -v python3 &> /dev/null; then
   echo "🐍 Python3 not found — installing..."
-  sudo dnf install -y python3 python3-venv python3-pip
+  sudo dnf install -y python3 python3-venv python3-pip python3-tkinter tk
 fi
 
 if [ ! -d "venv" ]; then

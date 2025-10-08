@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=VAT Refunder
-Exec=/home/YOURUSER/vat_refunder/start.sh
+Exec=sh -c "$HOME/vat_refunder/start.sh"
 Icon=utilities-system-monitor
 Terminal=false
 Type=Application

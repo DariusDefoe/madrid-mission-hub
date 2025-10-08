@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from db import get_cnx  # central DB connector
 import tkinter as tk
 from tkinter import ttk, messagebox
-import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
 import csv
