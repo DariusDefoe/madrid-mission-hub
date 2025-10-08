@@ -50,7 +50,7 @@ class AutocompleteCombobox(ttk.Combobox):
 # ==========================================================
 def fetch_supplier_data():
     try:
-        with db_cursor(commit=True) as cur:
+        with db_cursor(commit=False) as cur:
             cur.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
             return cur.fetchall()
     except Error:
@@ -58,7 +58,7 @@ def fetch_supplier_data():
 
 def fetch_budget_heads():
     try:
-        with db_cursor(commit=True) as cur:
+        with db_cursor(commit=False) as cur:
             cur.execute("SELECT Head_of_Accounts_ID, Head_of_Accounts_Name FROM Head_of_Accounts")
             rows = cur.fetchall()
             return {name: head_id for head_id, name in rows}
@@ -215,6 +215,7 @@ status_var = tk.StringVar()
 status_dropdown = ttk.Combobox(root, textvariable=status_var, font=lbl_font, width=w-10)
 status_dropdown['values'] = ["Pending", "Processed", "Archived"]
 status_dropdown.grid(row=6, column=1, padx=20, pady=15)
+status_dropdown.config(state='readonly')
 
 # Voucher Section
 sep = ttk.Separator(root, orient='horizontal')
@@ -244,9 +245,18 @@ if budget_heads:
 option_menu = tk.OptionMenu(root, budget_head_var, *budget_heads.keys())
 option_menu.config(font=lbl_font)
 option_menu.grid(row=14, column=1, padx=20, pady=10, sticky="w")
-
+suppliers = fetch_supplier_data()                 # [(id, name), ...]
+supplier_id_map = {name: sid for sid, name in suppliers}
+supplier_dropdown.set_completion_list([name for _, name in suppliers])
+# Guard: budget heads menu can be empty
+if not budget_heads:
+    budget_head_var.set("— no heads —")
+    option_menu.config(state="disabled")
 
 submit_button = tk.Button(root, text="Submit", command=submit_transaction, font=btn_font, width=20)
 submit_button.grid(row=15, column=1, padx=20, pady=20, sticky="w")
+# Status label (missing)
+status_label = tk.Label(root, text="", font=("Helvetica", 12))
+status_label.grid(row=16, column=0, columnspan=3, padx=20, pady=10, sticky="w")
 
 root.mainloop()
