@@ -152,6 +152,7 @@ def clear_form():
     entry_voucher_quarter.delete(0, tk.END)
     entry_voucher_year.delete(0, tk.END)
     budget_head_var.set('')
+    invoice_vat_entry.config(state='normal')  # ensure editable again
 
 def calculate_vat(*args):
     if calculate_vat_var.get():
@@ -180,7 +181,6 @@ w = 50
 tk.Label(root, text="Supplier:", font=lbl_font).grid(row=0, column=0, padx=20, pady=15, sticky="e")
 supplier_var = tk.StringVar()
 supplier_dropdown = AutocompleteCombobox(root, textvariable=supplier_var, font=lbl_font, width=w-10)
-supplier_dropdown.set_completion_list([s[1] for s in fetch_supplier_data()])
 supplier_dropdown.grid(row=0, column=1, padx=20, pady=15)
 
 tk.Label(root, text="Invoice Number:", font=lbl_font).grid(row=1, column=0, padx=20, pady=15, sticky="e")

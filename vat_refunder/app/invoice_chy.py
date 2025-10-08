@@ -28,7 +28,10 @@ def db_cursor(commit=False):
         cur.close()
         cnx.close()
 
-# ===================== Autocomplete Combobox Class =====================
+# ==========================================================
+# Autocomplete Combobox Class
+# ==========================================================
+
 class AutocompleteCombobox(ttk.Combobox):
     def set_completion_list(self, completion_list):
         self._completion_list = sorted(completion_list, key=str.lower)
@@ -46,12 +49,18 @@ class AutocompleteCombobox(ttk.Combobox):
     def _handle_selected(self, event):
         pass
 
-# ===================== VAT Calculation Function =====================
+# ==========================================================
+# VAT Calculation Function
+# ==========================================================
+
 def calculate_vat_from_total(total_amount):
     return total_amount * 21 / 121
 
-# ===================== Database Fetch Functions =====================
-def fetch_data_from_db():
+# ==========================================================
+# Database Fetch Functions
+# ==========================================================
+
+def fetch_supplier_data():
     try:
         with db_cursor() as cur: 
             cur.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
@@ -71,7 +80,9 @@ def fetch_budget_heads():
         messagebox.showerror("Database Error", f"Error fetching budget heads: {e}")
         return {}
 
-# ===================== Event Handlers =====================
+# ==========================================================
+# Event Handlers
+# ==========================================================
 def submit_chancery_transaction():
     supplier_name = supplier_var.get()
     invoice_number = invoice_number_entry.get().strip()
@@ -160,10 +171,10 @@ def submit_chancery_transaction():
             # success UI (outside with:)
         if voucher_id:
             messagebox.showinfo("Success",
-                                f"Invoice submitted successfully.\nInvoice ID: {invoice_id}\nVoucher ID: {voucher_id}")
+                                f"Invoice submitted successfully.")
         else:
             messagebox.showinfo("Success",
-                                f"Invoice submitted successfully.\nInvoice ID: {invoice_id}")
+                                f"Invoice submitted successfully.")
         status_label.config(text="Invoice submitted successfully.", fg="green")
         clear_fields()
 
@@ -211,12 +222,16 @@ def on_invoice_amount_change(*args):
         except ValueError:
             invoice_vat_var.set("")
 
-# ===================== Fetch Data =====================
-suppliers = fetch_data_from_db()
+# ==========================================================
+# Fetch Data
+# ==========================================================
+suppliers = fetch_supplier_data()
 supplier_id_map = {supplier[1]: supplier[0] for supplier in suppliers}
 budget_heads = fetch_budget_heads()
 
-# ===================== Tkinter GUI Setup =====================
+# ==========================================================
+# Tkinter GUI Setup
+# ==========================================================
 root = tk.Tk()
 root.title("Chancery Invoice Entry Form")
 root.geometry("800x700")
