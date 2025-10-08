@@ -1,0 +1,7 @@
+dotenv
+urllib
+mysql-connector-python
+csv
+tkinter
+reportlab
+contextlib

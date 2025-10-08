@@ -1,0 +1,33 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.env
+
+# OS clutter
+.DS_Store
+Thumbs.db
+
+# Local data / exports
+exports/
+Desktop/exports/
+*.csv
+*.pdf
+
+# Docker volumes & build artifacts
+mysql-data/
+db_data/
+*/mysql-data/
+*/db_data/
+
+# IDE configs
+.vscode/
+.idea/
+
+# Python packaging
+*.egg-info/
+dist/
+build/
