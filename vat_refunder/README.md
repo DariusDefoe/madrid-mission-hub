@@ -25,12 +25,16 @@ The app was designed for administrative environments that need clear, auditable 
 ## ⚙️ Installation & Setup
 ```bash
 # Clone the repository
-git clone https://github.com/YOURUSERNAME/vat_refunder.git
-cd vat_refunder
+https://github.com/DariusDefoe/madrid-mission-hub.git
+cd madrid-mission-hub/vat_refunder
 
 # Copy example environment file
 cp .env.example .env
 # (optional) edit .env to adjust passwords or DB name
+
+# Install necessary utilities
+chmod +x setup.sh
+./setup.sh
 
 # Start MySQL + GUI
 chmod +x start.sh
