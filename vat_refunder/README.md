@@ -1,10 +1,37 @@
-sudo dnf install docker docker-compose-plugin python3 python3-mysql-connector
-sudo systemctl enable --now docker
+# 🧾 VAT Refunder
 
-# start database
-docker compose up -d
+**VAT Refunder** is a lightweight desktop application built with **Python, Tkinter, and MySQL (Dockerized)**.  
+It helps manage and report VAT-refund workflows such as invoice tracking, voucher creation, and quarterly reporting.  
+The app was designed for administrative environments that need clear, auditable data entry and automated report generation.
 
-mkdir -p ~/Desktop/exports
-cp /home/$USER/vat_refunder/vat_refunder.desktop ~/.local/share/applications/
-update-desktop-database ~/.local/share/applications/
-chmod +x ~/.local/share/applications/vat_refunder.desktop
+---
+
+## 🚀 Features
+- GUI data entry for Chancery and Residence invoices and vouchers  
+- One-click generation of PDF and CSV reports (using ReportLab)  
+- Dockerized MySQL 9.3 backend for easy setup and persistence  
+- Cross-platform launcher (`start.sh`) that auto-creates a Python virtual environment  
+- CSV exports automatically saved to `~/Desktop/exports`
+
+---
+
+## 🧩 Requirements
+- Docker + Docker Compose plugin  
+- Python ≥ 3.10  
+- Linux or macOS (tested on Fedora 42)
+
+---
+
+## ⚙️ Installation & Setup
+```bash
+# Clone the repository
+git clone https://github.com/YOURUSERNAME/vat_refunder.git
+cd vat_refunder
+
+# Copy example environment file
+cp .env.example .env
+# (optional) edit .env to adjust passwords or DB name
+
+# Start MySQL + GUI
+chmod +x start.sh
+./start.sh
