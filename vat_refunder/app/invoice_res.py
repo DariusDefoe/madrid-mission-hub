@@ -2,33 +2,35 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import mysql.connector
 from mysql.connector import Error
 import csv
 from datetime import datetime
-from urllib.parse import urlparse
 import os
+from contextlib import contextmanager
+from db import get_cnx  # central DB connector
 
-# Parse MySQL Connection Details
-mysql_conn = os.environ.get("MYSQL_CONNECTION")
-if mysql_conn:
-    url = urlparse(mysql_conn)
-    db_config = {
-        "host": url.hostname,
-        "user": url.username,
-        "password": url.password,
-        "database": url.path.lstrip('/'),
-        "port": url.port if url.port else 3306
-    }
-else:
-    db_config = {
-        "host": os.environ.get("DB_HOST"),
-        "user": os.environ.get("DB_USER"),
-        "password": os.environ.get("DB_PASSWORD"),
-        "database": os.environ.get("DB_NAME")
-    }
+# ==========================================================
+# Context manager for automatic cleanup
+# ==========================================================
+@contextmanager
+def db_cursor(commit=False):
+    cnx = get_cnx()
+    cur = cnx.cursor()
+    try:
+        yield cur
+        if commit:
+            cnx.commit()
+    except Exception as e:
+        cnx.rollback()
+        raise e
+    finally:
+        cur.close()
+        cnx.close()
 
+# ==========================================================
 # Autocomplete Combobox
+# ==========================================================
+
 class AutocompleteCombobox(ttk.Combobox):
     def set_completion_list(self, completion_list):
         self._completion_list = sorted(completion_list, key=str.lower)
@@ -43,35 +45,29 @@ class AutocompleteCombobox(ttk.Combobox):
         if matches:
             self.event_generate('<Down>')
 
+# ==========================================================
 # Database Fetch Functions
-def fetch_data_from_db():
-    conn = None
+# ==========================================================
+def fetch_supplier_data():
     try:
-        conn = mysql.connector.connect(**db_config)
-        cur = conn.cursor()
-        cur.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
-        return cur.fetchall()
+        with db_cursor(commit=True) as cur:
+            cur.execute("SELECT Supplier_ID, Supplier_Name FROM NIF_Codes")
+            return cur.fetchall()
     except Error:
         return []
-    finally:
-        if conn and conn.is_connected():
-            cur.close(); conn.close()
 
 def fetch_budget_heads():
-    conn = None
     try:
-        conn = mysql.connector.connect(**db_config)
-        cur = conn.cursor()
-        cur.execute("SELECT Head_of_Accounts_ID, Head_of_Accounts_Name FROM Head_of_Accounts")
-        rows = cur.fetchall()
-        return {name: head_id for head_id, name in rows}
+        with db_cursor(commit=True) as cur:
+            cur.execute("SELECT Head_of_Accounts_ID, Head_of_Accounts_Name FROM Head_of_Accounts")
+            rows = cur.fetchall()
+            return {name: head_id for head_id, name in rows}
     except Error:
         return {}
-    finally:
-        if conn and conn.is_connected():
-            cur.close(); conn.close()
 
+# ==========================================================
 # Main Transaction Function
+# ==========================================================
 def submit_transaction():
     supplier = supplier_var.get().strip()
     inv_num = invoice_number_entry.get().strip()
@@ -111,41 +107,35 @@ def submit_transaction():
         head_id = budget_heads.get(bud_head)
         if not head_id:
             status_label.config(text="Invalid budget head.", fg="red"); return
-    conn = None
     try:
-        conn = mysql.connector.connect(**db_config)
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM Invoices_Residence WHERE Number = %s", (inv_num,))
-        if cur.fetchone():
-            status_label.config(text="Duplicate invoice.", fg="red"); return
-        if voucher:
-            cur.execute(
-                """INSERT INTO Vouchers (Voucher_Number, Head_of_Accounts_ID, Voucher_Beneficiary,
-                Voucher_Euro, Voucher_Quarter, Voucher_Year) VALUES (%s, %s, %s, %s, %s, %s)""",
-                (voucher, head_id, benef, vou_euro, vou_quarter, vou_year)
-            )
-            voucher_id = cur.lastrowid
-            cur.execute(
-                """INSERT INTO Invoices_Residence (Supplier_ID, Number, Date, Total, Vat, Refundable, Status, Voucher_ID)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                (supp_id, inv_num, inv_date, inv_amt, inv_vat, refundable, status, voucher_id)
-            )
-        else:
-            cur.execute(
-                """INSERT INTO Invoices_Residence (Supplier_ID, Number, Date, Total, Vat, Refundable, Status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (supp_id, inv_num, inv_date, inv_amt, inv_vat, refundable, status)
-            )
-        conn.commit()
-        msg = f"Invoice ID: {cur.lastrowid}"
-        if voucher_id: msg += f", Voucher ID: {voucher_id}"
-        status_label.config(text=msg, fg="green")
-        clear_form()
+        with db_cursor(commit=True) as cur:
+            cur.execute("SELECT * FROM Invoices_Residence WHERE Number = %s", (inv_num,))
+            if cur.fetchone():
+                status_label.config(text="Duplicate invoice.", fg="red"); return
+            if voucher:
+                cur.execute(
+                    """INSERT INTO Vouchers (Voucher_Number, Head_of_Accounts_ID, Voucher_Beneficiary,
+                    Voucher_Euro, Voucher_Quarter, Voucher_Year) VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (voucher, head_id, benef, vou_euro, vou_quarter, vou_year)
+                )
+                voucher_id = cur.lastrowid
+                cur.execute(
+                    """INSERT INTO Invoices_Residence (Supplier_ID, Number, Date, Total, Vat, Refundable, Status, Voucher_ID)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (supp_id, inv_num, inv_date, inv_amt, inv_vat, refundable, status, voucher_id)
+                )
+            else:
+                cur.execute(
+                    """INSERT INTO Invoices_Residence (Supplier_ID, Number, Date, Total, Vat, Refundable, Status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (supp_id, inv_num, inv_date, inv_amt, inv_vat, refundable, status)
+                )
+            msg = f"Invoice ID: {cur.lastrowid}"
+            if voucher_id: msg += f", Voucher ID: {voucher_id}"
+            status_label.config(text=msg, fg="green")
+            clear_form()
     except Error as e:
         status_label.config(text=f"DB Error: {e}", fg="red")
-    finally:
-        if conn and conn.is_connected():
-            cur.close(); conn.close()
 
 def clear_form():
     supplier_var.set('')
@@ -176,67 +166,10 @@ def calculate_vat(*args):
         invoice_vat_var.set('')
         invoice_vat_entry.config(state='normal')
 
-def batch_insert():
-    path = filedialog.askopenfilename(initialdir="/home/user/INVOICES/", title="Select CSV File", filetypes=[("CSV files", "*.csv")])
-    if not path: return
-    invoices, errors = [], []
-    try:
-        with open(path, newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            req = ["Supplier_Name", "Invoice_Number", "Invoice_Date", "Invoice_Amount", "Invoice_VAT", "Refundable"]
-            for field in req:
-                if field not in reader.fieldnames:
-                    messagebox.showerror("CSV Error", f"Missing field: {field}")
-                    return
-            has_status = "Status" in reader.fieldnames
-            for i, row in enumerate(reader, start=2):
-                try:
-                    supp = row["Supplier_Name"].strip()
-                    invn = row["Invoice_Number"].strip()
-                    invd = row["Invoice_Date"].strip()
-                    amt = float(row["Invoice_Amount"].strip())
-                    vat = float(row["Invoice_VAT"].strip())
-                    ref = int(row["Refundable"].strip())
-                    stat = row["Status"].strip() if has_status and row["Status"].strip() else "Pending"
-                    datetime.strptime(invd, '%Y-%m-%d')
-                    sid = supplier_id_map.get(supp)
-                    if not sid: raise ValueError(f"Supplier '{supp}' not found.")
-                    invoices.append((sid, invn, invd, amt, vat, ref, stat))
-                except Exception as e:
-                    errors.append(f"Line {i}: {e}")
-    except Exception as e:
-        messagebox.showerror("File Error", f"{e}")
-        return
-    if errors:
-        messagebox.showerror("CSV Errors", "\n".join(errors))
-    if not invoices:
-        messagebox.showinfo("Batch Insert", "No valid invoices.")
-        return
-    conn = None
-    try:
-        conn = mysql.connector.connect(**db_config)
-        cur = conn.cursor()
-        nums = [inv[1] for inv in invoices]
-        fmt = ','.join(['%s'] * len(nums))
-        cur.execute(f"SELECT Number FROM Invoices_Residence WHERE Number IN ({fmt})", tuple(nums))
-        existing = {r[0] for r in cur.fetchall()}
-        unique = [inv for inv in invoices if inv[1] not in existing]
-        if not unique:
-            messagebox.showinfo("Batch Insert", "No new invoices.")
-            return
-        cur.executemany(
-            """INSERT INTO Invoices_Residence (Supplier_ID, Number, Date, Total, Vat, Refundable, Status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)""", unique
-        )
-        conn.commit()
-        status_label.config(text=f"Inserted {cur.rowcount} invoices.", fg="green")
-    except Error as e:
-        status_label.config(text=f"DB Error: {e}", fg="red")
-    finally:
-        if conn and conn.is_connected():
-            cur.close(); conn.close()
-
+# ==========================================================
 # GUI Setup
+# ==========================================================
+
 root = tk.Tk()
 root.title("Residence Invoice Entry Form")
 root.geometry("1100x700")
@@ -247,7 +180,7 @@ w = 50
 tk.Label(root, text="Supplier:", font=lbl_font).grid(row=0, column=0, padx=20, pady=15, sticky="e")
 supplier_var = tk.StringVar()
 supplier_dropdown = AutocompleteCombobox(root, textvariable=supplier_var, font=lbl_font, width=w-10)
-supplier_dropdown.set_completion_list([s[1] for s in fetch_data_from_db()])
+supplier_dropdown.set_completion_list([s[1] for s in fetch_supplier_data()])
 supplier_dropdown.grid(row=0, column=1, padx=20, pady=15)
 
 tk.Label(root, text="Invoice Number:", font=lbl_font).grid(row=1, column=0, padx=20, pady=15, sticky="e")
@@ -315,12 +248,5 @@ option_menu.grid(row=14, column=1, padx=20, pady=10, sticky="w")
 
 submit_button = tk.Button(root, text="Submit", command=submit_transaction, font=btn_font, width=20)
 submit_button.grid(row=15, column=1, padx=20, pady=20, sticky="w")
-batch_insert_button = tk.Button(root, text="Batch Insert", command=batch_insert, font=btn_font, width=20, bg="#4CAF50", fg="white")
-batch_insert_button.grid(row=15, column=2, padx=20, pady=20, sticky="w")
-status_label = tk.Label(root, text="", font=lbl_font)
-status_label.grid(row=16, column=0, columnspan=3, padx=20, pady=15)
-
-supplier_data = fetch_data_from_db()
-supplier_id_map = {s[1]: s[0] for s in supplier_data}
 
 root.mainloop()
