@@ -1,7 +1,7 @@
 # 🧾 VAT Refunder
 
 **VAT Refunder** is a lightweight desktop application built with **Python, Tkinter, and MySQL (Dockerized)**.  
-It helps manage and report VAT-refund workflows such as invoice tracking, voucher creation, and quarterly reporting.  
+It helps manage and report VAT-refund workflows such as invoice tracking, voucher tracking, and quarterly reporting.  
 The app was designed for administrative environments that need clear, auditable data entry and automated report generation.
 
 ---

@@ -1,12 +1,12 @@
-# workScripts 🚀
+# madrid-mission-hub 🚀
 
 > Collection of automation and utility scripts to streamline administrative tasks. 🔧
 
 ## 🌟 Overview
-A set of Zsh, Python and MySQL scripts designed to:
+A set of shell, Python and MySQL scripts designed to:
 - ✨ Automate routine workflows (file organization, report generation, backups)
 - 🔗 Simplify interaction with APIs and external services
-- 📊 Standardize common operations (data parsing, email notifications)
+- 📊 Standardize common operations (data parsing, accounting, reports)
 
 ## 🛠️ Prerequisites
 - Git (for cloning)
@@ -16,8 +16,8 @@ A set of Zsh, Python and MySQL scripts designed to:
 - Any additional libraries listed in each script’s header
 
 ## 🚀 Installation
-git clone git@github.com:DariusDefoe/workScripts.git
-cd workScripts
+git clone https://github.com/DariusDefoe/madrid-mission-hub.git
+cd madrid-mission-hub
 
 ## ▶️ Usage
 
