@@ -65,7 +65,9 @@ def submit():
     bh_name = budget_head_var.get().strip()
     head_id = budget_heads.get(bh_name)
 
-    # ▶ validations
+# ==========================================================
+# Data validation
+# ==========================================================
     try:
         euro = float(euro_txt)
         quarter = int(quarter_txt)
@@ -88,9 +90,12 @@ def submit():
     except Exception as e:
         messagebox.showerror("Data Error", str(e))
 
+# ==========================================================
+# Main app GUI
+# ==========================================================
 root = tk.Tk()
 root.title("Insert Voucher")
-root.geometry("800x600")
+root.geometry("")
 root.configure(bg="lightblue")
 
 label_options = {"bg": "lightblue", "font": ("Helvetica", 12)}
