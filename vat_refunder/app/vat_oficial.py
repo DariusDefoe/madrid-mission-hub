@@ -66,7 +66,7 @@ def db_cursor(commit=False):
 # Config
 # ==========================================================
 OUTPUT_DIR = "~/Desktop/exports"
-MAX_INVOICE_NUMBER_LEN = 20  # AEAT constraint
+MAX_INVOICE_NUMBER_LEN = 12  # AEAT constraint
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ==========================================================
